@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+ENV/
+env/
+
+# Editor
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# FFmpeg-Artifact
+*.log
+*_tmp*
+
+# Media files (avoid huge binary commits)
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.heic
+*.gif
+*.dng
+
+# Exiftool backup files
+*_original
