@@ -11,7 +11,8 @@ A Windows-first toolkit to downscale videos, re-encode media, and recompress pho
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.12+
+- `ffmpeg` and `ffprobe` in PATH
 - `exiftool` in PATH
 - Python packages:
   - `ffmpeg-python`
@@ -23,11 +24,11 @@ A Windows-first toolkit to downscale videos, re-encode media, and recompress pho
 **Recommended: `uv` workflow**
 
 ```powershell
-# Create and activate venv
-uv venv
+# Create the venv and install the dependencies from pyproject.toml
+uv sync
 
-# or from pyproject.toml
-uv install
+# Run a script inside it
+uv run downscale_vids.py
 ```
 
 **`pip` workflow**
@@ -55,7 +56,7 @@ python compress_photos.py
 ```
 
 - Add source JPEGs to `./Photos_to_compress`.
-- Output goes to `compressed_exports_2.5_bpp_size_filter` in that directory.
+- Output goes to `compressed_exports_<bpp_threshold>_bpp_size_filter` in that directory.
 
 ### Inspect pixel format
 
@@ -63,11 +64,15 @@ python compress_photos.py
 python check_video_pixel_format.py
 ```
 
+- Edit the video path at the bottom of the script.
+
 ### Compare stats
 
 ```powershell
 python compare_vids.py
 ```
+
+- Edit the original and optimized paths at the bottom of the script. `downscale_vids.py` writes to an `optimized_<codec>_<quality>crf_<preset>` folder.
 
 ## Notes
 
