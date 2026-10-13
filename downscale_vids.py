@@ -34,10 +34,10 @@ def transfer_metadata_exiftool(source, target):
 
 def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed_preset='fast', codec='h264_nvenc', target_index=None):
     # Print settings in 1 line as requested
-    print(f"⚙️  SETTINGS: Codec={codec} | Quality={quality} | Preset={speed_preset} | Target={target_long_side}p | Index={target_index if target_index else 'All'}")
+    print(f"⚙️  SETTINGS: Codec={codec} | Quality={quality} | Preset={speed_preset} | Target={target_long_side}p | Index={target_index if target_index is not None else 'All'}")
 
     file_index=""
-    if target_index:
+    if target_index is not None:
         file_index= f"_{target_index}"
     folder_name = f"optimized_{codec}_{quality}crf_{speed_preset}{file_index}"
     output_dir = os.path.join(input_dir, folder_name)
@@ -57,8 +57,8 @@ def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed
     }
 
     if target_index is not None:
-        if target_index > len(all_files):
-            print(f"❌ Error: Only {len(all_files)} videos found.")
+        if not 1 <= target_index <= len(all_files):
+            print(f"❌ Error: target_index must be between 1 and {len(all_files)}.")
             return
         files_to_process = [all_files[target_index - 1]]
     else:
