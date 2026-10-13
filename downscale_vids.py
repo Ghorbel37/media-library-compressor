@@ -25,8 +25,8 @@ def transfer_metadata_exiftool(source, target):
             target
         ]
         # Run silently
-        print("Copied exif metadata")
         subprocess.run(cmd, capture_output=True, check=True)
+        print("Copied exif metadata")
         return True
     except Exception as e:
         print(f"⚠️ ExifTool Warning: {e}")
