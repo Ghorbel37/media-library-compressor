@@ -5,7 +5,7 @@ from win32_setctime import setctime # Only for Windows
 
 def run_photo_cleanup(input_dir, bpp_threshold=2.5, quality=85):
     # Setup folders
-    output_dir = os.path.join(input_dir, "compressed_exports_2.5_bpp_size_filter")
+    output_dir = os.path.join(input_dir, f"compressed_exports_{bpp_threshold}_bpp_size_filter")
     os.makedirs(output_dir, exist_ok=True)
 
     # Stats tracking
