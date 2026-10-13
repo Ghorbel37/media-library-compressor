@@ -100,9 +100,9 @@ def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed
             if abs(rotation) in [90, 270]:
                 width, height = height, width
 
-            # Skip if already <=1080p
-            if max(width, height) <= 1920:
-                print(f"⏭ Already ≤1080p ({width}x{height})")
+            # Skip if already at or below the target size
+            if max(width, height) <= target_long_side:
+                print(f"⏭ Already ≤{target_long_side}px ({width}x{height})")
                 continue
 
             orig_size = os.path.getsize(input_path)
