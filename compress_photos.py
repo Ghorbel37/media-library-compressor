@@ -34,10 +34,11 @@ def run_photo_cleanup(input_dir, bpp_threshold=2.5, quality=85):
                     exif_data = img._getexif()
                     dt_str = exif_data.get(36867) if exif_data else None
                     
-                    photo_year = 9999 # Default if no date found
                     if dt_str:
                         photo_date = datetime.strptime(dt_str, '%Y:%m:%d %H:%M:%S')
-                        photo_year = photo_date.year
+                    else:
+                        # No EXIF date: keep the file's own modified time
+                        photo_date = datetime.fromtimestamp(os.path.getmtime(file_path))
 
                     # 2. Check Primary Filter: Size > 3MB
                     if orig_size > size_threshold:
@@ -48,7 +49,10 @@ def run_photo_cleanup(input_dir, bpp_threshold=2.5, quality=85):
 
                         if bpp > bpp_threshold:
                             # 4. Perform Compression
-                            img.save(save_path, "JPEG", quality=quality, optimize=True, exif=exif)
+                            save_options = {"quality": quality, "optimize": True}
+                            if exif:
+                                save_options["exif"] = exif
+                            img.save(save_path, "JPEG", **save_options)
                             
                             # 5. Sync File System Dates
                             ts = photo_date.timestamp()
