@@ -1,7 +1,4 @@
 ffmpeg-python==0.2.0
 future==1.0.0
 pillow==12.1.1
-pyee==13.0.1
-python-ffmpeg==2.0.12
-typing-extensions==4.15.0
 win32-setctime==1.2.0
