@@ -43,13 +43,14 @@ def default_output_dir(input_dir, codec, quality, speed_preset, target_index=Non
     return os.path.join(input_dir, f"optimized_{codec}_{quality}crf_{speed_preset}{file_index}")
 
 
-def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, quality=24, speed_preset='p7', codec='h264_nvenc', target_index=None):
+def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, quality=24, speed_preset='p7', codec='h264_nvenc', target_index=None, dry_run=False):
     # Print settings in 1 line
-    print(f"⚙️  SETTINGS: Codec={codec} | Quality={quality} | Preset={speed_preset} | Target={target_long_side}p | Index={target_index if target_index is not None else 'All'}")
+    print(f"{'🔍 DRY RUN ' if dry_run else ''}⚙️  SETTINGS: Codec={codec} | Quality={quality} | Preset={speed_preset} | Target={target_long_side}p | Index={target_index if target_index is not None else 'All'}")
 
     # Stats Tracking Initialization
     stats = {
         "processed_count": 0,
+        "would_process": 0,
         "failed": 0,
         "original_bytes": 0,
         "new_bytes": 0
@@ -71,13 +72,14 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
         files_to_process = all_files
 
     output_dir = output_dir or default_output_dir(input_dir, codec, quality, speed_preset, target_index)
-    os.makedirs(output_dir, exist_ok=True)
+    if not dry_run:
+        os.makedirs(output_dir, exist_ok=True)
 
     total = len(files_to_process)
 
     for i, filename in enumerate(files_to_process, start=1):
 
-        print(f"\n[{i}/{total}] Processing: {filename}")
+        print(f"\n[{i}/{total}] {'Checking' if dry_run else 'Processing'}: {filename}")
 
         input_path = os.path.join(input_dir, filename)
         output_path = os.path.join(output_dir, filename)
@@ -115,6 +117,11 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
                 continue
 
             orig_size = os.path.getsize(input_path)
+
+            if dry_run:
+                stats["would_process"] += 1
+                print(f"Would downscale {width}x{height} to {target_long_side}px ({orig_size / 1e6:.2f} MB)")
+                continue
 
             orig_bitrate = int(video_stream.get('bit_rate', 0)) or int(probe['format'].get('bit_rate', 0))
             max_rate = int(orig_bitrate * 0.85)
@@ -192,8 +199,15 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
     return stats
 
 
-def print_video_summary(stats):
-    if stats["processed_count"] > 0:
+def print_video_summary(stats, dry_run=False):
+    if dry_run:
+        print("\n" + "="*40)
+        print("         DRY RUN SUMMARY")
+        print("="*40)
+        print(f"Would Downscale:     {stats['would_process']}")
+        print(f"Failed:              {stats['failed']}")
+        print("="*40)
+    elif stats["processed_count"] > 0:
         orig_mb = stats["original_bytes"] / 1e6
         new_mb = stats["new_bytes"] / 1e6
         gains_mb = orig_mb - new_mb

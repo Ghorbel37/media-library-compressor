@@ -12,9 +12,10 @@ def default_output_dir(input_dir, bpp_threshold):
     return os.path.join(input_dir, f"compressed_exports_{bpp_threshold}_bpp_size_filter")
 
 
-def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85, size_threshold=3 * 1024 * 1024):
+def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85, size_threshold=3 * 1024 * 1024, dry_run=False):
     output_dir = output_dir or default_output_dir(input_dir, bpp_threshold)
-    os.makedirs(output_dir, exist_ok=True)
+    if not dry_run:
+        os.makedirs(output_dir, exist_ok=True)
 
     # Stats tracking
     stats = {
@@ -54,7 +55,10 @@ def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85,
                         w, h = img.size
                         bpp = (orig_size * 8) / (w * h)
 
-                        if bpp > bpp_threshold:
+                        if bpp > bpp_threshold and dry_run:
+                            stats["compressed"] += 1
+                            print(f"Would compress {filename} ({orig_size / 1e6:.2f} MB, {bpp:.2f} bpp)")
+                        elif bpp > bpp_threshold:
                             # 4. Perform Compression
                             save_options = {"quality": quality, "optimize": True}
                             if exif:
@@ -70,8 +74,12 @@ def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85,
                             print(f"✅ {filename}: {orig_size / 1e6:.2f} MB -> {new_size / 1e6:.2f} MB")
                         else:
                             stats["skipped_efficient"] += 1
+                            if dry_run:
+                                print(f"Skip {filename}: {bpp:.2f} bpp is already efficient")
                     else:
                         stats["skipped_small"] += 1
+                        if dry_run:
+                            print(f"Skip {filename}: {orig_size / 1e6:.2f} MB is under the size limit")
 
             except Exception as e:
                 stats["failed"] += 1
@@ -80,14 +88,17 @@ def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85,
     return stats
 
 
-def print_photo_summary(results):
+def print_photo_summary(results, dry_run=False):
     print("\n" + "="*40)
-    print("         CLEANUP SUMMARY")
+    print("         DRY RUN SUMMARY" if dry_run else "         CLEANUP SUMMARY")
     print("="*40)
-    print(f"Files Compressed:      {results['compressed']}")
+    print(f"{'Would Compress:' if dry_run else 'Files Compressed:':<23}{results['compressed']}")
     print(f"Skipped (Small):       {results['skipped_small']}")
     print(f"Skipped (Efficient):   {results['skipped_efficient']}")
     print(f"Failed:                {results['failed']}")
+    if dry_run:
+        print("="*40)
+        return
     print("-" * 40)
     print(f"Original Total Size:   {results['total_original_size'] / 1e6:.2f} MB")
     print(f"Space Reclaimed:       {results['space_saved_bytes'] / 1e6:.2f} MB")
