@@ -5,6 +5,7 @@ from time import sleep
 
 import ffmpeg
 
+from .files import find_files, partial_path
 from .filetimes import set_file_times
 
 VIDEO_EXTENSIONS = ('.mp4', '.mov')
@@ -43,7 +44,8 @@ def default_output_dir(input_dir, codec, quality, speed_preset, target_index=Non
     return os.path.join(input_dir, f"optimized_{codec}_{quality}crf_{speed_preset}{file_index}")
 
 
-def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, quality=24, speed_preset='p7', codec='h264_nvenc', target_index=None, dry_run=False):
+def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, quality=24, speed_preset='p7', codec='h264_nvenc', target_index=None,
+                           dry_run=False, recursive=False, overwrite=False):
     # Print settings in 1 line
     print(f"{'🔍 DRY RUN ' if dry_run else ''}⚙️  SETTINGS: Codec={codec} | Quality={quality} | Preset={speed_preset} | Target={target_long_side}p | Index={target_index if target_index is not None else 'All'}")
 
@@ -51,12 +53,15 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
     stats = {
         "processed_count": 0,
         "would_process": 0,
+        "skipped_existing": 0,
         "failed": 0,
         "original_bytes": 0,
         "new_bytes": 0
     }
 
-    all_files = sorted([f for f in os.listdir(input_dir) if f.lower().endswith(VIDEO_EXTENSIONS)])
+    # Resolved early so a recursive scan can leave the output folder out
+    output_dir = output_dir or default_output_dir(input_dir, codec, quality, speed_preset, target_index)
+    all_files = find_files(input_dir, VIDEO_EXTENSIONS, recursive, output_dir)
 
     if not all_files:
         print("❌ No video files found.")
@@ -71,7 +76,6 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
     else:
         files_to_process = all_files
 
-    output_dir = output_dir or default_output_dir(input_dir, codec, quality, speed_preset, target_index)
     if not dry_run:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -83,6 +87,12 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
 
         input_path = os.path.join(input_dir, filename)
         output_path = os.path.join(output_dir, filename)
+        temp_path = partial_path(output_path)
+
+        if os.path.exists(output_path) and not overwrite:
+            stats["skipped_existing"] += 1
+            print("⏭ Already in the output folder")
+            continue
 
         try:
             probe = ffmpeg.probe(input_path)
@@ -123,6 +133,8 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
                 print(f"Would downscale {width}x{height} to {target_long_side}px ({orig_size / 1e6:.2f} MB)")
                 continue
 
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
             orig_bitrate = int(video_stream.get('bit_rate', 0)) or int(probe['format'].get('bit_rate', 0))
             max_rate = int(orig_bitrate * 0.85)
             buf_size = max_rate * 2
@@ -137,7 +149,7 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
                 ffmpeg
                 .input(input_path)
                 .output(
-                    output_path,
+                    temp_path,
                     vf=vf_str,
                     fps_mode='passthrough',  # To keep framerate as it is (doesnt seem to work)
                     vcodec=codec,       # h264_nvenc or libx264
@@ -159,11 +171,13 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
             )
 
             # --- EXIFTOOL METADATA TRANSFER ---
-            transfer_metadata_exiftool(input_path, output_path)
+            transfer_metadata_exiftool(input_path, temp_path)
 
-            new_size = os.path.getsize(output_path)
+            new_size = os.path.getsize(temp_path)
 
             if new_size < orig_size:
+                os.replace(temp_path, output_path)
+
                 # Update Stats
                 stats["processed_count"] += 1
                 stats["original_bytes"] += orig_size
@@ -186,7 +200,7 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
 
             else:
                 print("⚠️ Bloat detected. Removing output.")
-                os.remove(output_path)
+                os.remove(temp_path)
 
         except ffmpeg.Error as e:
             stats["failed"] += 1
@@ -195,6 +209,11 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
         except Exception as e:
             stats["failed"] += 1
             print(f"❌ System Error: {e}")
+
+        finally:
+            # Leave no half-written file behind after an error
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
 
     return stats
 
@@ -205,6 +224,7 @@ def print_video_summary(stats, dry_run=False):
         print("         DRY RUN SUMMARY")
         print("="*40)
         print(f"Would Downscale:     {stats['would_process']}")
+        print(f"Skipped (Existing):  {stats['skipped_existing']}")
         print(f"Failed:              {stats['failed']}")
         print("="*40)
     elif stats["processed_count"] > 0:
@@ -217,6 +237,7 @@ def print_video_summary(stats, dry_run=False):
         print("         FINAL COMPRESSION STATS")
         print("="*40)
         print(f"Videos Optimized:    {stats['processed_count']}")
+        print(f"Skipped (Existing):  {stats['skipped_existing']}")
         print(f"Failed:              {stats['failed']}")
         print(f"Original Total Size: {orig_mb:.2f} MB")
         print(f"Compressed Total:    {new_mb:.2f} MB")

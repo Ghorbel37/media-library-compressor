@@ -74,6 +74,10 @@ def build_parser():
     for command in (photos, videos):
         command.add_argument("-n", "--dry-run", action="store_true",
                              help="list what would be processed and why other files are skipped, write nothing")
+        command.add_argument("-r", "--recursive", action="store_true",
+                             help="also go into subfolders, mirroring the folder tree in the output")
+        command.add_argument("--overwrite", action="store_true",
+                             help="redo files that already exist in the output (by default they are skipped)")
 
     return parser
 
@@ -84,7 +88,8 @@ def main(argv=None):
     if args.command == "photos":
         stats = run_photo_cleanup(args.input, args.output, bpp_threshold=args.bpp,
                                   quality=args.quality, size_threshold=args.min_size,
-                                  dry_run=args.dry_run)
+                                  dry_run=args.dry_run, recursive=args.recursive,
+                                  overwrite=args.overwrite)
         print_photo_summary(stats, args.dry_run)
         return 1 if stats["failed"] else 0
 
@@ -92,7 +97,8 @@ def main(argv=None):
         stats = run_video_optimization(args.input, args.output, target_long_side=args.size,
                                        quality=args.quality, speed_preset=args.preset,
                                        codec=args.codec, target_index=args.only,
-                                       dry_run=args.dry_run)
+                                       dry_run=args.dry_run, recursive=args.recursive,
+                                       overwrite=args.overwrite)
         print_video_summary(stats, args.dry_run)
         return 1 if stats["failed"] else 0
 
