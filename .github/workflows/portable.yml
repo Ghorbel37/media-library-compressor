@@ -1,0 +1,152 @@
+name: Portable builds
+
+# Builds mlo as a standalone folder with ffmpeg, ffprobe and exiftool inside,
+# for Windows and Linux. Every push to main is built and smoke tested; a v* tag
+# also publishes both archives as a release.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x64
+          - os: ubuntu-22.04  # older glibc, so the build also runs on older distros
+            platform: linux-x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build mlo with PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller .
+          pyinstaller --noconfirm --clean --onedir --name mlo packaging/mlo_entry.py
+          VERSION=$(python -c "import media_library_optimizer as m; print(m.__version__)")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "PACKAGE=mlo-portable-$VERSION-${{ matrix.platform }}" >> "$GITHUB_ENV"
+
+      - name: Add ffmpeg, ffprobe and exiftool (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          TOOLS=dist/mlo/tools
+          mkdir -p "$TOOLS" dl
+          curl -fsSL -o dl/ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+          7z x -y -odl dl/ffmpeg.zip > /dev/null
+          FF=$(ls -d dl/ffmpeg-*essentials_build)
+          cp "$FF/bin/ffmpeg.exe" "$FF/bin/ffprobe.exe" "$TOOLS/"
+          cp "$FF/LICENSE" "$TOOLS/ffmpeg-LICENSE.txt"
+          echo "ffmpeg: $(basename "$FF") from https://www.gyan.dev/ffmpeg/builds/" >> "$TOOLS/SOURCES.txt"
+
+          EXIF_VER=$(curl -fsSL https://exiftool.org/ver.txt)
+          curl -fsSL -o dl/exiftool.zip "https://exiftool.org/exiftool-${EXIF_VER}_64.zip"
+          7z x -y -odl dl/exiftool.zip > /dev/null
+          EX=$(ls -d dl/exiftool-*_64)
+          cp "$EX/exiftool(-k).exe" "$TOOLS/exiftool.exe"
+          cp -r "$EX/exiftool_files" "$TOOLS/"
+          echo "exiftool: ${EXIF_VER} (Windows) from https://exiftool.org/" >> "$TOOLS/SOURCES.txt"
+
+      - name: Add ffmpeg, ffprobe and exiftool (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          TOOLS=dist/mlo/tools
+          mkdir -p "$TOOLS" dl
+          # Newest release-branch static GPL build (has nvenc), not the master build
+          ASSET=$(gh release view latest --repo BtbN/FFmpeg-Builds --json assets --jq '.assets[].name' \
+            | grep -E '^ffmpeg-n[0-9.]+-latest-linux64-gpl-[0-9.]+\.tar\.xz$' | sort -V | tail -n 1)
+          curl -fsSL -o dl/ffmpeg.tar.xz "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$ASSET"
+          tar -xJf dl/ffmpeg.tar.xz -C dl
+          FF=$(ls -d dl/ffmpeg-n*-linux64-gpl-*)
+          cp "$FF/bin/ffmpeg" "$FF/bin/ffprobe" "$TOOLS/"
+          cp "$FF/LICENSE.txt" "$TOOLS/ffmpeg-LICENSE.txt"
+          echo "ffmpeg: $ASSET from https://github.com/BtbN/FFmpeg-Builds" >> "$TOOLS/SOURCES.txt"
+
+          EXIF_VER=$(curl -fsSL https://exiftool.org/ver.txt)
+          curl -fsSL -o dl/exiftool.tar.gz "https://exiftool.org/Image-ExifTool-${EXIF_VER}.tar.gz"
+          tar -xzf dl/exiftool.tar.gz -C dl
+          cp "dl/Image-ExifTool-${EXIF_VER}/exiftool" "$TOOLS/exiftool"
+          cp -r "dl/Image-ExifTool-${EXIF_VER}/lib" "$TOOLS/lib"
+          chmod +x "$TOOLS/ffmpeg" "$TOOLS/ffprobe" "$TOOLS/exiftool"
+          echo "exiftool: ${EXIF_VER} from https://exiftool.org/ (needs perl, preinstalled on most distros)" >> "$TOOLS/SOURCES.txt"
+
+      - name: Add license notes
+        run: |
+          cp LICENSE dist/mlo/LICENSE.txt
+          cat >> dist/mlo/tools/SOURCES.txt <<'NOTE'
+
+          These tools are not part of mlo and keep their own licenses:
+          - FFmpeg is licensed under the GPL (see ffmpeg-LICENSE.txt). Source code: https://ffmpeg.org/download.html
+          - ExifTool is free software under the same terms as Perl itself (https://exiftool.org/#license)
+          mlo uses these copies first, and falls back to the ones on PATH if they are removed.
+          NOTE
+
+      - name: Smoke test with the bundled tools
+        run: |
+          cd dist/mlo
+          MLO=./mlo
+          FFMPEG=tools/ffmpeg
+          [ "$RUNNER_OS" = "Windows" ] && MLO=./mlo.exe && FFMPEG=tools/ffmpeg.exe
+          $MLO --version
+          mkdir -p ../../smoke
+          "$FFMPEG" -loglevel error -f lavfi -i testsrc2=size=2560x1440:rate=30 -t 1 -c:v libx264 -crf 10 \
+            -metadata creation_time=2020-07-06T20:31:22Z ../../smoke/VID_test.mp4
+          $MLO info ../../smoke/VID_test.mp4
+          $MLO videos ../../smoke -s 1280 -c libx264 -p ultrafast | tee ../../smoke.log
+          grep -q "Copied exif metadata" ../../smoke.log
+          grep -q "Success" ../../smoke.log
+
+      - name: Archive
+        run: |
+          mv dist/mlo "dist/$PACKAGE"
+          cd dist
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a -tzip "$PACKAGE.zip" "$PACKAGE" > /dev/null
+          else
+            tar -czf "$PACKAGE.tar.gz" "$PACKAGE"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE }}
+          path: dist/${{ env.PACKAGE }}.*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish the release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG Portable" --verify-tag \
+              --notes "Portable builds of mlo with ffmpeg, ffprobe and exiftool included. Unzip, then run mlo from that folder or add it to PATH."
+          fi
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
