@@ -16,6 +16,8 @@ Originals are never modified. New files go to a separate output folder.
 
 ## Requirements
 
+The portable version below needs none of this, apart from an NVIDIA GPU for `h264_nvenc`.
+
 - Python 3.12+
 - `ffmpeg` and `ffprobe` in PATH
 - `exiftool` in PATH
@@ -24,6 +26,14 @@ Originals are never modified. New files go to a separate output folder.
 Works on Windows, Linux and macOS. The file creation date is only restored on Windows.
 
 ## Setup
+
+### Portable version (no Python needed)
+
+Download `mlo-portable-<version>-windows-x64.zip` or `mlo-portable-<version>-linux-x64.tar.gz` from the [Releases](https://github.com/Ghorbel37/media-library-optimizer/releases) page and extract it anywhere. It includes ffmpeg, ffprobe and exiftool in its `tools` folder, so nothing else has to be installed.
+
+Run `mlo` from that folder, or add the folder to your PATH to use it from any terminal. On Linux, the bundled exiftool needs `perl`, which most distributions already have.
+
+The portable `mlo` uses its own tools first and falls back to the ones on PATH. Their licenses are in `tools/SOURCES.txt` (FFmpeg is GPL, ExifTool uses the Perl license).
 
 ### As a tool with uv
 
@@ -101,6 +111,43 @@ mlo photos D:\Phone\Camera -q 85 --min-size 3MB --bpp 2.5
 | `-q, --quality N` | `85` | JPEG quality |
 | `--min-size SIZE` | `3MB` | Skip files smaller than this, e.g. `500KB` or `3MB` |
 | `--bpp N` | `2.5` | Skip files at or below this bits-per-pixel density |
+| `--target-bpp N` | off | Pick the quality per photo to land just under this density, instead of one `-q` for all |
+
+#### Choosing `--bpp` and `--target-bpp`
+
+Bits per pixel (bpp) is the file size relative to the resolution: `size in bytes x 8 / (width x height)`. It shows how heavily a JPEG is compressed, whatever its resolution. `--dry-run` prints it for every photo.
+
+- `--bpp` is a filter. Photos above it are re-encoded at `-q`, the rest are left alone. Set it below the bpp of the photos you want to shrink.
+- `--target-bpp` is a goal. For each photo, mlo searches the highest quality whose output stays at or under it, so every photo ends up about the same density. Photos already at or under it are skipped.
+
+Estimates for typical 12 MP phone photos re-encoded by mlo (Pillow). Detailed or noisy scenes (night, foliage) land at the high end, plain scenes at the low end:
+
+| JPEG quality | About this bpp | 12 MP photo |
+|---|---|---|
+| 95 | 3.5 to 4.5 | 5 to 7 MB |
+| 90 | 2.5 to 3.2 | 3.8 to 4.8 MB |
+| 85 | 2.0 to 2.5 | 3 to 3.8 MB |
+| 80 | 1.7 to 2.1 | 2.6 to 3.2 MB |
+| 75 | 1.4 to 1.8 | 2.1 to 2.7 MB |
+| 70 | 1.2 to 1.6 | 1.8 to 2.4 MB |
+| 60 | 1.0 to 1.3 | 1.5 to 2 MB |
+
+For other resolutions: size in MB is about `bpp x megapixels / 8`.
+
+Examples:
+
+```powershell
+# Default: only photos above 2.5 bpp (about quality 88 or finer) are recompressed at quality 85
+mlo photos D:\Phone\Camera
+
+# Photos exported at 90%, made to look like a 75% export
+mlo photos D:\Phone\Camera -q 75 --bpp 2.0 --min-size 0
+
+# Every photo at about the size of a quality 80 export, whatever it started at
+mlo photos D:\Phone\Camera --target-bpp 1.9 --min-size 0
+```
+
+A quality number is not a standard: a camera's "75" and mlo's 75 use different compression tables, so treat the table as a starting point and check a few results.
 
 ### Both at once
 
