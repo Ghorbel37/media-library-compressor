@@ -1,33 +1,15 @@
 import os
-import re
-from enum import Enum
-from pathlib import Path
-from typing import Annotated, Optional
 
 import typer
 
-from . import __version__
+from .options import (
+    Bpp, CodecOption, Codec, DryRun, MediaFolder, MediaOutput, MinSize, Only, Overwrite, PhotoFolder,
+    PhotoOutput, PhotoQuality, Preset, Recursive, Size, Version, VideoFile, VideoFolder, VideoOutput,
+    VideoQuality, parse_size,
+)
 from .photos import print_photo_summary, run_photo_cleanup
 from .videoinfo import check_pixel_format, compare_videos
 from .videos import print_video_summary, run_video_optimization
-
-SIZE_UNITS = {"": 1, "B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
-
-
-def parse_size(text):
-    """Turn '3MB', '500KB' or '1048576' into a number of bytes."""
-    if isinstance(text, int):
-        return text
-    match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([KMG]?B?)\s*", text.upper())
-    if not match:
-        raise typer.BadParameter(f"invalid size: {text!r} (use e.g. 500KB, 3MB)")
-    return int(float(match.group(1)) * SIZE_UNITS[match.group(2)])
-
-
-class Codec(str, Enum):
-    h264_nvenc = "h264_nvenc"
-    libx264 = "libx264"
-
 
 app = typer.Typer(
     name="mlo",
@@ -36,45 +18,23 @@ app = typer.Typer(
     add_completion=True,
 )
 
-VideoFile = Annotated[Path, typer.Argument(exists=True, file_okay=True, dir_okay=False)]
-DryRun = Annotated[bool, typer.Option(
-    "--dry-run", "-n", help="List what would be processed and why other files are skipped, write nothing.")]
-Recursive = Annotated[bool, typer.Option(
-    "--recursive", "-r", help="Also go into subfolders, mirroring the folder tree in the output.")]
-Overwrite = Annotated[bool, typer.Option(
-    "--overwrite", help="Redo files that already exist in the output (by default they are skipped).")]
-
 
 def as_str(path):
     return str(path) if path is not None else None
 
 
-def version_callback(value: bool):
-    if value:
-        print(f"mlo {__version__}")
-        raise typer.Exit()
-
-
 @app.callback()
-def root(
-    version: Annotated[bool, typer.Option(
-        "--version", callback=version_callback, is_eager=True, help="Show the version and exit.")] = False,
-):
+def root(version: Version = False):
     pass
 
 
 @app.command()
 def photos(
-    input: Annotated[Path, typer.Argument(
-        exists=True, file_okay=False, dir_okay=True, help="Folder with the photos.")],
-    output: Annotated[Optional[Path], typer.Option(
-        "--output", "-o", metavar="DIR", file_okay=False,
-        help="Where the new files go (default: INPUT/compressed_exports_<bpp>_bpp_size_filter).")] = None,
-    quality: Annotated[int, typer.Option("--quality", "-q", help="JPEG quality.")] = 85,
-    min_size: Annotated[int, typer.Option(
-        "--min-size", metavar="SIZE", parser=parse_size,
-        help="Skip files smaller than this, e.g. 500KB or 3MB.")] = "3MB",
-    bpp: Annotated[float, typer.Option(help="Skip files at or below this bits-per-pixel density.")] = 2.5,
+    input: PhotoFolder,
+    output: PhotoOutput = None,
+    quality: PhotoQuality = 85,
+    min_size: MinSize = "3MB",
+    bpp: Bpp = 2.5,
     dry_run: DryRun = False,
     recursive: Recursive = False,
     overwrite: Overwrite = False,
@@ -90,21 +50,13 @@ def photos(
 
 @app.command()
 def videos(
-    input: Annotated[Path, typer.Argument(
-        exists=True, file_okay=False, dir_okay=True, help="Folder with the videos.")],
-    output: Annotated[Optional[Path], typer.Option(
-        "--output", "-o", metavar="DIR", file_okay=False,
-        help="Where the new files go (default: INPUT/optimized_<codec>_<quality>crf_<preset>).")] = None,
-    size: Annotated[int, typer.Option(
-        "--size", "-s", metavar="PX",
-        help="Target long side; videos already at or below it are skipped.")] = 1920,
-    codec: Annotated[Codec, typer.Option(
-        "--codec", "-c", help="h264_nvenc (GPU) or libx264 (CPU).")] = Codec.h264_nvenc,
-    quality: Annotated[int, typer.Option("--quality", "-q", help="cq for nvenc, crf for libx264.")] = 24,
-    preset: Annotated[str, typer.Option(
-        "--preset", "-p", help="Encoder preset: p1 to p7 for nvenc, fast/slow/... for libx264.")] = "p7",
-    only: Annotated[Optional[int], typer.Option(
-        metavar="N", help="Process only the Nth video (in name order).")] = None,
+    input: VideoFolder,
+    output: VideoOutput = None,
+    size: Size = 1920,
+    codec: CodecOption = Codec.h264_nvenc,
+    quality: VideoQuality = 24,
+    preset: Preset = "p7",
+    only: Only = None,
     dry_run: DryRun = False,
     recursive: Recursive = False,
     overwrite: Overwrite = False,
@@ -121,11 +73,8 @@ def videos(
 
 @app.command("all")
 def run_all(
-    input: Annotated[Path, typer.Argument(
-        exists=True, file_okay=False, dir_okay=True, help="Folder with the photos and videos.")],
-    output: Annotated[Optional[Path], typer.Option(
-        "--output", "-o", metavar="DIR", file_okay=False,
-        help="Photos and videos go to DIR/photos and DIR/videos (default: each one's own folder in INPUT).")] = None,
+    input: MediaFolder,
+    output: MediaOutput = None,
     dry_run: DryRun = False,
     recursive: Recursive = False,
     overwrite: Overwrite = False,
