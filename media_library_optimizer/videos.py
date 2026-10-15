@@ -1,9 +1,14 @@
 import os
-from time import sleep
-import ffmpeg
 import subprocess
-from win32_setctime import setctime
 from datetime import datetime, timezone
+from time import sleep
+
+import ffmpeg
+
+from .filetimes import set_file_times
+
+VIDEO_EXTENSIONS = ('.mp4', '.mov')
+
 
 def transfer_metadata_exiftool(source, target):
     """
@@ -32,37 +37,41 @@ def transfer_metadata_exiftool(source, target):
         print(f"⚠️ ExifTool Warning: {e}")
         return False
 
-def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed_preset='fast', codec='h264_nvenc', target_index=None):
-    # Print settings in 1 line as requested
+
+def default_output_dir(input_dir, codec, quality, speed_preset, target_index=None):
+    file_index = f"_{target_index}" if target_index is not None else ""
+    return os.path.join(input_dir, f"optimized_{codec}_{quality}crf_{speed_preset}{file_index}")
+
+
+def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, quality=24, speed_preset='p7', codec='h264_nvenc', target_index=None):
+    # Print settings in 1 line
     print(f"⚙️  SETTINGS: Codec={codec} | Quality={quality} | Preset={speed_preset} | Target={target_long_side}p | Index={target_index if target_index is not None else 'All'}")
-
-    file_index=""
-    if target_index is not None:
-        file_index= f"_{target_index}"
-    folder_name = f"optimized_{codec}_{quality}crf_{speed_preset}{file_index}"
-    output_dir = os.path.join(input_dir, folder_name)
-    os.makedirs(output_dir, exist_ok=True)
-
-    all_files = sorted([f for f in os.listdir(input_dir) if f.lower().endswith(('.mp4', '.mov'))])
-
-    if not all_files:
-        print("❌ No video files found.")
-        return
 
     # Stats Tracking Initialization
     stats = {
         "processed_count": 0,
+        "failed": 0,
         "original_bytes": 0,
         "new_bytes": 0
     }
 
+    all_files = sorted([f for f in os.listdir(input_dir) if f.lower().endswith(VIDEO_EXTENSIONS)])
+
+    if not all_files:
+        print("❌ No video files found.")
+        return stats
+
     if target_index is not None:
         if not 1 <= target_index <= len(all_files):
-            print(f"❌ Error: target_index must be between 1 and {len(all_files)}.")
-            return
+            print(f"❌ Error: --only must be between 1 and {len(all_files)}.")
+            stats["failed"] += 1
+            return stats
         files_to_process = [all_files[target_index - 1]]
     else:
         files_to_process = all_files
+
+    output_dir = output_dir or default_output_dir(input_dir, codec, quality, speed_preset, target_index)
+    os.makedirs(output_dir, exist_ok=True)
 
     total = len(files_to_process)
 
@@ -162,9 +171,8 @@ def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed
                     target_ts = dt.timestamp()
                 else:
                     target_ts = os.path.getmtime(input_path)
-                    
-                setctime(output_path, target_ts)
-                os.utime(output_path, (target_ts, target_ts))
+
+                set_file_times(output_path, target_ts)
 
                 saved = (orig_size - new_size) / 1e6
                 print(f"✅ Success! Saved {saved:.2f} MB")
@@ -174,13 +182,17 @@ def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed
                 os.remove(output_path)
 
         except ffmpeg.Error as e:
+            stats["failed"] += 1
             print(f"❌ FFmpeg Error: {e.stderr.decode().splitlines()[-1]}")
 
         except Exception as e:
+            stats["failed"] += 1
             print(f"❌ System Error: {e}")
 
+    return stats
 
-    # --- FINAL STATS CALCULATION ---
+
+def print_video_summary(stats):
     if stats["processed_count"] > 0:
         orig_mb = stats["original_bytes"] / 1e6
         new_mb = stats["new_bytes"] / 1e6
@@ -191,6 +203,7 @@ def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed
         print("         FINAL COMPRESSION STATS")
         print("="*40)
         print(f"Videos Optimized:    {stats['processed_count']}")
+        print(f"Failed:              {stats['failed']}")
         print(f"Original Total Size: {orig_mb:.2f} MB")
         print(f"Compressed Total:    {new_mb:.2f} MB")
         print("-" * 40)
@@ -199,8 +212,3 @@ def run_video_optimization(input_dir, target_long_side=1920, quality='20', speed
         print("="*40)
     else:
         print("\n🏁 No videos were successfully compressed.")
-
-# Encode using h264_nvenc (gpu)
-run_video_optimization("./Vids/To_downscale", quality=24, speed_preset="p7")
-# Encode using libx264 (cpu)
-# run_video_optimization("./Vids/To_downscale", quality=20, speed_preset="slow", codec="libx264", target_index=19)

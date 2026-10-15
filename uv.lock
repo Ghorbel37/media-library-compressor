@@ -25,19 +25,19 @@ wheels = [
 
 [[package]]
 name = "media-library-optimizer"
-version = "0.1.0"
-source = { virtual = "." }
+version = "0.2.0"
+source = { editable = "." }
 dependencies = [
     { name = "ffmpeg-python" },
     { name = "pillow" },
-    { name = "win32-setctime" },
+    { name = "win32-setctime", marker = "sys_platform == 'win32'" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "ffmpeg-python", specifier = ">=0.2.0" },
     { name = "pillow", specifier = ">=12.1.1" },
-    { name = "win32-setctime", specifier = ">=1.2.0" },
+    { name = "win32-setctime", marker = "sys_platform == 'win32'", specifier = ">=1.2.0" },
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
 ffmpeg-python==0.2.0
 future==1.0.0
 pillow==12.1.1
-win32-setctime==1.2.0
+win32-setctime==1.2.0; sys_platform == 'win32'
