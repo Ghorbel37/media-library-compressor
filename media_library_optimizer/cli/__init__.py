@@ -1,5 +1,7 @@
 """Assembles the mlo app: one file per command in this folder, shared options in _options.py."""
 
+import sys
+
 import typer
 
 from ._options import Version
@@ -31,6 +33,9 @@ app.command()(compare)
 
 def main():
     """Entry point for mlo and python -m: any error a command lets through ends here, as one line and exit code 1."""
+    # A Windows console or pipe may not be UTF-8: show a ? instead of crashing on the emoji in the output
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(errors="replace")
     try:
         app(prog_name="mlo")
     except Exception as e:
