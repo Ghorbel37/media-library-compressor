@@ -68,6 +68,10 @@ PhotoQuality = Annotated[int, typer.Option("--quality", "-q", min=1, max=100, he
 MinSize = Annotated[int, typer.Option(
     "--min-size", metavar="SIZE", parser=parse_size, help="Skip files smaller than this, e.g. 500KB or 3MB.")]
 Bpp = Annotated[float, typer.Option("--bpp", help="Skip files at or below this bits-per-pixel density.")]
+TargetBpp = Annotated[float | None, typer.Option(
+    "--target-bpp", min=0.1, metavar="BPP",
+    help="Pick the quality per photo to land just under this density instead of using --quality; "
+         "photos already at or under it are skipped (replaces --bpp). See the README for values.")]
 
 # Videos
 Size = Annotated[int, typer.Option(
