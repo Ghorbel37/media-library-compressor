@@ -64,6 +64,11 @@ def build_parser():
     videos.add_argument("--only", type=int, metavar="N",
                         help="process only the Nth video (in name order)")
 
+    run_all = sub.add_parser("all", help="run photos then videos on the same folder, with their defaults")
+    run_all.add_argument("input", type=existing_dir, help="folder with the photos and videos")
+    run_all.add_argument("-o", "--output", metavar="DIR",
+                         help="photos and videos go to DIR/photos and DIR/videos (default: each one's own folder in INPUT)")
+
     info = sub.add_parser("info", help="show a video's pixel format, color range and color space")
     info.add_argument("file", type=existing_file)
 
@@ -71,7 +76,7 @@ def build_parser():
     compare.add_argument("original", type=existing_file)
     compare.add_argument("optimized", type=existing_file)
 
-    for command in (photos, videos):
+    for command in (photos, videos, run_all):
         command.add_argument("-n", "--dry-run", action="store_true",
                              help="list what would be processed and why other files are skipped, write nothing")
         command.add_argument("-r", "--recursive", action="store_true",
@@ -85,22 +90,32 @@ def build_parser():
 def main(argv=None):
     args = build_parser().parse_args(argv)
 
+    shared = {"dry_run": args.dry_run, "recursive": args.recursive, "overwrite": args.overwrite} \
+        if args.command in ("photos", "videos", "all") else {}
+
     if args.command == "photos":
         stats = run_photo_cleanup(args.input, args.output, bpp_threshold=args.bpp,
-                                  quality=args.quality, size_threshold=args.min_size,
-                                  dry_run=args.dry_run, recursive=args.recursive,
-                                  overwrite=args.overwrite)
+                                  quality=args.quality, size_threshold=args.min_size, **shared)
         print_photo_summary(stats, args.dry_run)
         return 1 if stats["failed"] else 0
 
     if args.command == "videos":
         stats = run_video_optimization(args.input, args.output, target_long_side=args.size,
                                        quality=args.quality, speed_preset=args.preset,
-                                       codec=args.codec, target_index=args.only,
-                                       dry_run=args.dry_run, recursive=args.recursive,
-                                       overwrite=args.overwrite)
+                                       codec=args.codec, target_index=args.only, **shared)
         print_video_summary(stats, args.dry_run)
         return 1 if stats["failed"] else 0
+
+    if args.command == "all":
+        photo_output = os.path.join(args.output, "photos") if args.output else None
+        video_output = os.path.join(args.output, "videos") if args.output else None
+        print("📷 PHOTOS")
+        photo_stats = run_photo_cleanup(args.input, photo_output, **shared)
+        print_photo_summary(photo_stats, args.dry_run)
+        print("\n🎬 VIDEOS")
+        video_stats = run_video_optimization(args.input, video_output, **shared)
+        print_video_summary(video_stats, args.dry_run)
+        return 1 if photo_stats["failed"] or video_stats["failed"] else 0
 
     try:
         if args.command == "info":
