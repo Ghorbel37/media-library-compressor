@@ -18,5 +18,5 @@ mlo = "media_library_optimizer.cli:main"
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["media_library_optimizer"]
+[tool.setuptools.packages.find]
+include = ["media_library_optimizer*"]

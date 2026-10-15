@@ -1,4 +1,4 @@
-"""Every argument and option of the mlo command, in one place.
+"""Every argument and option of the mlo commands, in one place.
 
 Each name is a type to put on a command parameter, e.g. `quality: PhotoQuality = 85`.
 The default value stays on the command, the flag names and help text live here.
@@ -11,7 +11,7 @@ from typing import Annotated
 
 import typer
 
-from . import __version__
+from .. import __version__
 
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
 
