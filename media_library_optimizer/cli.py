@@ -5,7 +5,7 @@ import typer
 from .options import (
     Bpp, CodecOption, Codec, DryRun, MediaFolder, MediaOutput, MinSize, Only, Overwrite, PhotoFolder,
     PhotoOutput, PhotoQuality, Preset, Recursive, Size, Version, VideoFile, VideoFolder, VideoOutput,
-    VideoQuality, parse_size,
+    VideoQuality,
 )
 from .photos import print_photo_summary, run_photo_cleanup
 from .videoinfo import check_pixel_format, compare_videos
@@ -41,7 +41,7 @@ def photos(
 ):
     """Recompress fine JPEGs."""
     stats = run_photo_cleanup(str(input), as_str(output), bpp_threshold=bpp, quality=quality,
-                              size_threshold=parse_size(min_size),
+                              size_threshold=min_size,
                               dry_run=dry_run, recursive=recursive, overwrite=overwrite)
     print_photo_summary(stats, dry_run)
     if stats["failed"]:

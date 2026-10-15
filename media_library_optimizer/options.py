@@ -64,19 +64,20 @@ MediaOutput = output_folder(
     "Photos and videos go to DIR/photos and DIR/videos (default: each one's own folder in INPUT).")
 
 # Photos
-PhotoQuality = Annotated[int, typer.Option("--quality", "-q", help="JPEG quality.")]
+PhotoQuality = Annotated[int, typer.Option("--quality", "-q", min=1, max=100, help="JPEG quality.")]
 MinSize = Annotated[int, typer.Option(
     "--min-size", metavar="SIZE", parser=parse_size, help="Skip files smaller than this, e.g. 500KB or 3MB.")]
 Bpp = Annotated[float, typer.Option("--bpp", help="Skip files at or below this bits-per-pixel density.")]
 
 # Videos
 Size = Annotated[int, typer.Option(
-    "--size", "-s", metavar="PX", help="Target long side; videos already at or below it are skipped.")]
+    "--size", "-s", metavar="PX", min=1, help="Target long side; videos already at or below it are skipped.")]
 CodecOption = Annotated[Codec, typer.Option("--codec", "-c", help="h264_nvenc (GPU) or libx264 (CPU).")]
 VideoQuality = Annotated[int, typer.Option("--quality", "-q", help="cq for nvenc, crf for libx264.")]
 Preset = Annotated[str, typer.Option(
     "--preset", "-p", help="Encoder preset: p1 to p7 for nvenc, fast/slow/... for libx264.")]
-Only = Annotated[int | None, typer.Option("--only", metavar="N", help="Process only the Nth video (in name order).")]
+Only = Annotated[int | None, typer.Option(
+    "--only", metavar="N", min=1, help="Process only the Nth video (in name order).")]
 
 # Shared by photos, videos and all
 DryRun = Annotated[bool, typer.Option(
