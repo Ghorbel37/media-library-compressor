@@ -2,9 +2,11 @@ import os
 
 import ffmpeg
 
+from .tools import FFPROBE
+
 
 def get_video_stream(file_path):
-    probe = ffmpeg.probe(file_path)
+    probe = ffmpeg.probe(file_path, cmd=FFPROBE)
     video_stream = next((s for s in probe['streams'] if s['codec_type'] == 'video'), None)
     if video_stream is None:
         raise ValueError(f"No video stream in {file_path}")

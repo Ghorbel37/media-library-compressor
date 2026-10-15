@@ -7,6 +7,7 @@ import ffmpeg
 
 from .files import find_files, partial_path
 from .filetimes import set_file_times
+from .tools import EXIFTOOL, FFMPEG, FFPROBE
 
 VIDEO_EXTENSIONS = ('.mp4', '.mov')
 
@@ -22,7 +23,7 @@ def transfer_metadata_exiftool(source, target):
     try:
         sleep(0.5)
         cmd = [
-            'exiftool',
+            EXIFTOOL,
             '-overwrite_original',
             '-all=',
             '-tagsFromFile', source,
@@ -95,7 +96,7 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
             continue
 
         try:
-            probe = ffmpeg.probe(input_path)
+            probe = ffmpeg.probe(input_path, cmd=FFPROBE)
 
             # --- EXTRACT INTERNAL CREATION TIME ---
             tags = probe.get('format', {}).get('tags', {})
@@ -166,7 +167,7 @@ def run_video_optimization(input_dir, output_dir=None, target_long_side=1920, qu
                     movflags='use_metadata_tags'
                 )
                 .overwrite_output()
-                .run(capture_stdout=True, capture_stderr=True)
+                .run(cmd=FFMPEG, capture_stdout=True, capture_stderr=True)
                 # .run()
             )
 
