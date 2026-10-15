@@ -49,44 +49,48 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           TOOLS=dist/mlo/tools
+          # exiftool.org drops old versions and is often unreachable from runners
+          EXIF_SF=https://sourceforge.net/projects/exiftool/files
           mkdir -p "$TOOLS" dl
-          curl -fsSL -o dl/ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+          curl -fsSL --retry 3 -o dl/ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
           7z x -y -odl dl/ffmpeg.zip > /dev/null
           FF=$(ls -d dl/ffmpeg-*essentials_build)
           cp "$FF/bin/ffmpeg.exe" "$FF/bin/ffprobe.exe" "$TOOLS/"
           cp "$FF/LICENSE" "$TOOLS/ffmpeg-LICENSE.txt"
           echo "ffmpeg: $(basename "$FF") from https://www.gyan.dev/ffmpeg/builds/" >> "$TOOLS/SOURCES.txt"
 
-          EXIF_VER=$(curl -fsSL https://exiftool.org/ver.txt)
-          curl -fsSL -o dl/exiftool.zip "https://exiftool.org/exiftool-${EXIF_VER}_64.zip"
+          EXIF_VER=$(curl -fsSL --retry 3 "$EXIF_SF/ver.txt/download" | tr -d "[:space:]")
+          curl -fsSL --retry 3 -o dl/exiftool.zip "$EXIF_SF/exiftool-${EXIF_VER}_64.zip/download"
           7z x -y -odl dl/exiftool.zip > /dev/null
           EX=$(ls -d dl/exiftool-*_64)
           cp "$EX/exiftool(-k).exe" "$TOOLS/exiftool.exe"
           cp -r "$EX/exiftool_files" "$TOOLS/"
-          echo "exiftool: ${EXIF_VER} (Windows) from https://exiftool.org/" >> "$TOOLS/SOURCES.txt"
+          echo "exiftool: ${EXIF_VER} (Windows) from https://exiftool.org/ (via SourceForge)" >> "$TOOLS/SOURCES.txt"
 
       - name: Add ffmpeg, ffprobe and exiftool (Linux)
         if: runner.os == 'Linux'
         run: |
           TOOLS=dist/mlo/tools
+          # exiftool.org drops old versions and is often unreachable from runners
+          EXIF_SF=https://sourceforge.net/projects/exiftool/files
           mkdir -p "$TOOLS" dl
           # Newest release-branch static GPL build (has nvenc), not the master build
           ASSET=$(gh release view latest --repo BtbN/FFmpeg-Builds --json assets --jq '.assets[].name' \
             | grep -E '^ffmpeg-n[0-9.]+-latest-linux64-gpl-[0-9.]+\.tar\.xz$' | sort -V | tail -n 1)
-          curl -fsSL -o dl/ffmpeg.tar.xz "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$ASSET"
+          curl -fsSL --retry 3 -o dl/ffmpeg.tar.xz "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$ASSET"
           tar -xJf dl/ffmpeg.tar.xz -C dl
           FF=$(ls -d dl/ffmpeg-n*-linux64-gpl-*)
           cp "$FF/bin/ffmpeg" "$FF/bin/ffprobe" "$TOOLS/"
           cp "$FF/LICENSE.txt" "$TOOLS/ffmpeg-LICENSE.txt"
           echo "ffmpeg: $ASSET from https://github.com/BtbN/FFmpeg-Builds" >> "$TOOLS/SOURCES.txt"
 
-          EXIF_VER=$(curl -fsSL https://exiftool.org/ver.txt)
-          curl -fsSL -o dl/exiftool.tar.gz "https://exiftool.org/Image-ExifTool-${EXIF_VER}.tar.gz"
+          EXIF_VER=$(curl -fsSL --retry 3 "$EXIF_SF/ver.txt/download" | tr -d "[:space:]")
+          curl -fsSL --retry 3 -o dl/exiftool.tar.gz "$EXIF_SF/Image-ExifTool-${EXIF_VER}.tar.gz/download"
           tar -xzf dl/exiftool.tar.gz -C dl
           cp "dl/Image-ExifTool-${EXIF_VER}/exiftool" "$TOOLS/exiftool"
           cp -r "dl/Image-ExifTool-${EXIF_VER}/lib" "$TOOLS/lib"
           chmod +x "$TOOLS/ffmpeg" "$TOOLS/ffprobe" "$TOOLS/exiftool"
-          echo "exiftool: ${EXIF_VER} from https://exiftool.org/ (needs perl, preinstalled on most distros)" >> "$TOOLS/SOURCES.txt"
+          echo "exiftool: ${EXIF_VER} from https://exiftool.org/ (via SourceForge; needs perl, preinstalled on most distros)" >> "$TOOLS/SOURCES.txt"
 
       - name: Add license notes
         run: |
