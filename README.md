@@ -33,9 +33,17 @@ To get `mlo` on your PATH everywhere, without managing a venv, install it with [
 uv tool install git+https://github.com/Ghorbel37/media-library-optimizer
 ```
 
-From a local clone, use `uv tool install .` instead. Upgrade with `uv tool upgrade media-library-optimizer` and remove it with `uv tool uninstall media-library-optimizer`.
+From a local clone, use `uv tool install .` instead. uv copies the package into its own environment, so `mlo` keeps working even if you delete the clone. Upgrade with `uv tool upgrade media-library-optimizer` and remove it with `uv tool uninstall media-library-optimizer`.
 
 If `mlo` is not found afterwards, run `uv tool update-shell` and open a new terminal.
+
+### Tab completion
+
+```powershell
+mlo --install-completion
+```
+
+Then open a new terminal. It detects your shell (PowerShell, bash, zsh or fish) and completes commands, options and values like `--codec`. Use `mlo --show-completion` to see the script instead of installing it.
 
 ### In a venv
 

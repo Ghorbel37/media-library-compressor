@@ -1,4 +1,12 @@
+annotated-doc==0.0.5
+colorama==0.4.6; sys_platform == 'win32'
 ffmpeg-python==0.2.0
 future==1.0.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
 pillow==12.1.1
+pygments==2.21.0
+rich==15.0.0
+shellingham==1.5.4
+typer==0.27.3
 win32-setctime==1.2.0; sys_platform == 'win32'
