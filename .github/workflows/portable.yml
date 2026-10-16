@@ -120,7 +120,8 @@ jobs:
 
       - name: Archive
         run: |
-          mv dist/mlc "dist/$PACKAGE"
+          # Copy instead of rename: on Windows something can still hold a file in dist/mlc after the smoke test
+          cp -r dist/mlc "dist/$PACKAGE"
           cd dist
           if [ "$RUNNER_OS" = "Windows" ]; then
             7z a -tzip "$PACKAGE.zip" "$PACKAGE" > /dev/null
