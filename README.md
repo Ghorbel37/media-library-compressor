@@ -124,31 +124,31 @@ Bits per pixel (bpp) is the file size relative to the resolution: `size in bytes
 - `--bpp` is a filter. Photos above it are re-encoded at `-q`, the rest are left alone. Set it below the bpp of the photos you want to shrink.
 - `--target-bpp` is a goal. For each photo, mlc searches the highest quality whose output stays at or under it, so every photo ends up about the same density. Photos already at or under it are skipped.
 
-Estimates for typical 12 MP phone photos re-encoded by mlc (Pillow). Detailed or noisy scenes (night, foliage) land at the high end, plain scenes at the low end:
+Measured on 29 photos from 11 phones and cameras (2008 to 2023, 3 to 16 MP), each re-encoded the way `mlc photos` does it. The range covers the middle 80% of the photos: detailed or noisy scenes (night, foliage) land at the high end, plain scenes at the low end. Straight from the camera, those photos were 0.9 to 2.9 bpp, 1.9 in the middle.
 
-| JPEG quality | About this bpp | 12 MP photo |
-|---|---|---|
-| 95 | 3.5 to 4.5 | 5 to 7 MB |
-| 90 | 2.5 to 3.2 | 3.8 to 4.8 MB |
-| 85 | 2.0 to 2.5 | 3 to 3.8 MB |
-| 80 | 1.7 to 2.1 | 2.6 to 3.2 MB |
-| 75 | 1.4 to 1.8 | 2.1 to 2.7 MB |
-| 70 | 1.2 to 1.6 | 1.8 to 2.4 MB |
-| 60 | 1.0 to 1.3 | 1.5 to 2 MB |
+| JPEG quality | bpp after mlc | Middle photo | 12 MP photo |
+|---|---|---|---|
+| 95 | 1.1 to 2.6 | 1.65 | about 2.5 MB |
+| 90 | 0.8 to 1.8 | 1.25 | about 1.9 MB |
+| 85 | 0.6 to 1.3 | 0.97 | about 1.5 MB |
+| 80 | 0.5 to 1.0 | 0.81 | about 1.2 MB |
+| 75 | 0.4 to 0.9 | 0.70 | about 1 MB |
+| 70 | 0.3 to 0.8 | 0.58 | about 0.9 MB |
+| 60 | 0.2 to 0.6 | 0.45 | about 0.7 MB |
 
-For other resolutions: size in MB is about `bpp x megapixels / 8`.
+For other resolutions: size in MB is about `bpp x megapixels / 8`. To see the bpp and the quality a photo was saved at, drop it on [mlc - Inspector](https://ghorbel37.github.io/media-library-compressor/).
 
 Examples:
 
 ```powershell
-# Default: only photos above 2.5 bpp (about quality 88 or finer) are recompressed at quality 85
+# Default: only photos above 2.5 bpp (about quality 95 or finer) are recompressed at quality 85
 mlc photos D:\Phone\Camera
 
 # Photos exported at 90%, made to look like a 75% export
-mlc photos D:\Phone\Camera -q 75 --bpp 2.0 --min-size 0
+mlc photos D:\Phone\Camera -q 75 --bpp 1.0 --min-size 0
 
 # Every photo at about the size of a quality 80 export, whatever it started at
-mlc photos D:\Phone\Camera --target-bpp 1.9 --min-size 0
+mlc photos D:\Phone\Camera --target-bpp 0.8 --min-size 0
 ```
 
 A quality number is not a standard: a camera's "75" and mlc's 75 use different compression tables, so treat the table as a starting point and check a few results.
