@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mlc - ML compressor</title>
+<title>mlc - Media Library Compressor</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<meta name="description" content="Check the bits per pixel of your photos and see what mlo photos would do with them. Runs in your browser, nothing is uploaded.">
+<meta name="description" content="Check the bits per pixel of your photos and see what mlc photos would do with them. Runs in your browser, nothing is uploaded.">
 <style>
   :root {
     --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #e2e1dc;
@@ -87,12 +87,12 @@
 </head>
 <body>
 <main>
-  <h1><img src="icon.svg" alt="" width="40" height="40">mlc - ML compressor</h1>
-  <p class="lead">Drop photos to see their bits per pixel and what <code>mlo photos</code> would do with them. Everything runs in your browser, nothing is uploaded.</p>
+  <h1><img src="icon.svg" alt="" width="40" height="40">mlc - Media Library Compressor</h1>
+  <p class="lead">Drop photos to see their bits per pixel and what <code>mlc photos</code> would do with them. Everything runs in your browser, nothing is uploaded.</p>
 
   <label class="drop" id="drop">
     <strong>Drop images here or click to choose</strong>
-    <span>JPEG for the mlo verdict. PNG, WebP and other formats your browser opens still get a bpp.</span>
+    <span>JPEG for the mlc verdict. PNG, WebP and other formats your browser opens still get a bpp.</span>
     <input type="file" id="files" accept="image/*,.jpg,.jpeg" multiple>
   </label>
 
@@ -107,14 +107,14 @@
     <label>--target-bpp
       <input type="number" id="target" value="1.9" min="0.1" step="0.1" disabled>
     </label>
-    <div class="cmd">Same as: <code id="cmd">mlo photos FOLDER</code></div>
+    <div class="cmd">Same as: <code id="cmd">mlc photos FOLDER</code></div>
   </div>
 
   <div class="summary" id="summary"></div>
   <div class="table-wrap">
     <table class="results">
       <thead>
-        <tr><th>File</th><th>Resolution</th><th>Size</th><th>bpp</th><th>About quality</th><th>mlo photos</th></tr>
+        <tr><th>File</th><th>Resolution</th><th>Size</th><th>bpp</th><th>About quality</th><th>mlc photos</th></tr>
       </thead>
       <tbody id="rows"><tr><td class="empty" colspan="6">No images yet.</td></tr></tbody>
     </table>
@@ -122,10 +122,10 @@
 
   <details>
     <summary>How bpp is calculated</summary>
-    <p>Bits per pixel is the file size relative to the resolution, the same formula mlo uses:</p>
+    <p>Bits per pixel is the file size relative to the resolution, the same formula mlc uses:</p>
     <p><code>bpp = size in bytes x 8 / (width x height)</code></p>
     <p>A photo is recompressed when it is larger than <code>--min-size</code> and its bpp is above <code>--bpp</code> (or above <code>--target-bpp</code> when that is set). Photos at or below the threshold are left alone.</p>
-    <p>The quality column is an estimate for typical phone photos re-encoded by mlo (Pillow). Detailed or noisy scenes land higher, plain scenes lower, and a camera's quality numbers use different tables, so treat it as a rough guide:</p>
+    <p>The quality column is an estimate for typical phone photos re-encoded by mlc (Pillow). Detailed or noisy scenes land higher, plain scenes lower, and a camera's quality numbers use different tables, so treat it as a rough guide:</p>
     <table>
       <thead><tr><th>JPEG quality</th><th>About this bpp</th></tr></thead>
       <tbody>
@@ -140,11 +140,11 @@
     </table>
   </details>
 
-  <footer>Part of <a href="https://github.com/Ghorbel37/media-library-optimizer">media-library-optimizer</a>. See the README for how to choose <code>--bpp</code> and <code>--target-bpp</code>.</footer>
+  <footer>Part of <a href="https://github.com/Ghorbel37/media-library-compressor">Media Library Compressor</a>. See the README for how to choose <code>--bpp</code> and <code>--target-bpp</code>.</footer>
 </main>
 
 <script>
-  const MB = 1024 * 1024;  // mlo's --min-size uses 1024-based units
+  const MB = 1024 * 1024;  // mlc's --min-size uses 1024-based units
   // Middle of each range in the README table, used to estimate a quality from a bpp
   const QUALITY_POINTS = [[60, 1.15], [70, 1.4], [75, 1.6], [80, 1.9], [85, 2.25], [90, 2.85], [95, 4.0]];
 
@@ -224,7 +224,7 @@
   }
 
   function verdict(item, bpp, s) {
-    if (!isJpeg(item.file)) return ["warn", "Not a JPEG", "mlo photos only reads .jpg and .jpeg"];
+    if (!isJpeg(item.file)) return ["warn", "Not a JPEG", "mlc photos only reads .jpg and .jpeg"];
     if (item.file.size <= s.minBytes) return ["skip", "Skip", "under the size limit"];
     if (bpp > s.threshold) {
       const how = s.useTarget ? `to about ${s.target} bpp` : `above ${s.bpp} bpp`;
@@ -235,7 +235,7 @@
 
   function render() {
     const s = settings();
-    let cmd = "mlo photos FOLDER";
+    let cmd = "mlc photos FOLDER";
     if (s.useTarget) cmd += ` --target-bpp ${s.target}`;
     else if (s.bpp !== 2.5) cmd += ` --bpp ${s.bpp}`;
     if (s.minBytes === 0) cmd += " --min-size 0";
@@ -265,7 +265,7 @@
           <td class="num" data-label="Size">${(f.size / 1e6).toFixed(2)} MB</td>
           <td class="bpp" data-label="bpp">${bpp.toFixed(2)}</td>
           <td class="num" data-label="About quality">${isJpeg(f) ? estimateQuality(bpp) : "-"}</td>
-          <td data-label="mlo photos"><span class="tag ${kind}">${label}</span><span class="sub">${why}</span></td>`;
+          <td data-label="mlc photos"><span class="tag ${kind}">${label}</span><span class="sub">${why}</span></td>`;
       }
       tr.querySelector("img").src = item.url;
       tr.querySelector(".file span").textContent = f.name;
@@ -273,7 +273,7 @@
       els.rows.appendChild(tr);
     }
     const n = items.length;
-    els.summary.textContent = `${n} image${n > 1 ? "s" : ""}, ${(bytes / 1e6).toFixed(1)} MB in total. mlo would compress ${compress} of them.`;
+    els.summary.textContent = `${n} image${n > 1 ? "s" : ""}, ${(bytes / 1e6).toFixed(1)} MB in total. mlc would compress ${compress} of them.`;
   }
 
   els.files.addEventListener("change", () => { addFiles(els.files.files); els.files.value = ""; });

@@ -1,6 +1,6 @@
 [project]
-name = "media-library-optimizer"
-version = "0.4.0"
+name = "media-library-compressor"
+version = "0.5.0"
 description = "A command line tool to optimize media while preserving quality, metadata and timestamps."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,11 +12,11 @@ dependencies = [
 ]
 
 [project.scripts]
-mlo = "media_library_optimizer.cli:main"
+mlc = "media_library_compressor.cli:main"
 
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["media_library_optimizer*"]
+include = ["media_library_compressor*"]

@@ -63,8 +63,8 @@ wheels = [
 ]
 
 [[package]]
-name = "media-library-optimizer"
-version = "0.4.0"
+name = "media-library-compressor"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "ffmpeg-python" },

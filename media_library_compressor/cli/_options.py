@@ -1,4 +1,4 @@
-"""Every argument and option of the mlo commands, in one place.
+"""Every argument and option of the mlc commands, in one place.
 
 Each name is a type to put on a command parameter, e.g. `quality: PhotoQuality = 85`.
 The default value stays on the command, the flag names and help text live here.
@@ -30,7 +30,7 @@ def parse_size(text):
 
 def version_callback(value: bool):
     if value:
-        print(f"mlo {__version__}")
+        print(f"mlc {__version__}")
         raise typer.Exit()
 
 

@@ -1,6 +1,6 @@
 """Locate ffmpeg, ffprobe and exiftool.
 
-The portable builds ship them in a tools folder next to the mlo executable,
+The portable builds ship them in a tools folder next to the mlc executable,
 and those copies are used first. Otherwise the plain name is returned, so
 the one on PATH is used.
 """
