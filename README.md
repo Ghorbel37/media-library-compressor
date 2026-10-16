@@ -1,3 +1,5 @@
+<img src="docs/icon.svg" alt="" width="96">
+
 # media-library-optimizer
 
 A command line tool to downscale videos and recompress photos while preserving quality, metadata and timestamps.
@@ -115,7 +117,7 @@ mlo photos D:\Phone\Camera -q 85 --min-size 3MB --bpp 2.5
 
 #### Choosing `--bpp` and `--target-bpp`
 
-Bits per pixel (bpp) is the file size relative to the resolution: `size in bytes x 8 / (width x height)`. It shows how heavily a JPEG is compressed, whatever its resolution. `--dry-run` prints it for every photo.
+Bits per pixel (bpp) is the file size relative to the resolution: `size in bytes x 8 / (width x height)`. It shows how heavily a JPEG is compressed, whatever its resolution. `--dry-run` prints it for every photo. To check a few photos without installing anything, drop them on [mlc - ML compressor](https://ghorbel37.github.io/media-library-optimizer/), which also shows what `mlo photos` would do with them.
 
 - `--bpp` is a filter. Photos above it are re-encoded at `-q`, the rest are left alone. Set it below the bpp of the photos you want to shrink.
 - `--target-bpp` is a goal. For each photo, mlo searches the highest quality whose output stays at or under it, so every photo ends up about the same density. Photos already at or under it are skipped.

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mlc - ML compressor</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="description" content="Check the bits per pixel of your photos and see what mlo photos would do with them. Runs in your browser, nothing is uploaded.">
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #e2e1dc;
+    --accent: #2f6fdb; --accent-soft: #e8effc; --ok: #1f7a4d; --ok-soft: #e4f3ea; --skip: #6b6b66; --skip-soft: #efefec;
+    --warn: #9a5b00; --warn-soft: #fbf0dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --panel: #1f1f1d; --text: #ecebe6; --muted: #9b9a93; --border: #33332f;
+      --accent: #7aa7ff; --accent-soft: #1f2a40; --ok: #6fd19d; --ok-soft: #173326; --skip: #a3a29b; --skip-soft: #2a2a27;
+      --warn: #f0b860; --warn-soft: #3a2c14;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { display: flex; align-items: center; gap: 12px; font-size: 26px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  a { color: var(--accent); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; background: var(--skip-soft); padding: 1px 5px; border-radius: 4px; }
+
+  .drop {
+    display: block; border: 2px dashed var(--border); border-radius: 12px; background: var(--panel);
+    padding: 36px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop strong { display: block; font-size: 17px; margin-bottom: 4px; }
+  .drop span { color: var(--muted); }
+  .drop input { display: none; }
+
+  .settings {
+    display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end;
+    margin: 16px 0; padding: 14px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .settings input[type=number], .settings select {
+    font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 8px; width: 120px;
+  }
+  .settings .check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); font-size: 14px; padding-bottom: 7px; }
+  .cmd { flex-basis: 100%; min-width: 0; font-size: 13px; color: var(--muted); }
+  .cmd code { display: inline-block; max-width: 100%; overflow-x: auto; white-space: nowrap; vertical-align: bottom; }
+
+  .summary { margin: 8px 0 12px; color: var(--muted); min-height: 1.5em; }
+  .table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; }
+  td.bpp { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .file { display: flex; align-items: center; gap: 10px; max-width: 280px; }
+  .file img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex: none; background: var(--skip-soft); }
+  .file span { overflow: hidden; text-overflow: ellipsis; }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .tag.compress { color: var(--ok); background: var(--ok-soft); }
+  .tag.skip { color: var(--skip); background: var(--skip-soft); }
+  .tag.warn { color: var(--warn); background: var(--warn-soft); }
+  .sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+  details { margin-top: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details table th, details table td { padding: 6px 10px; }
+  @media (max-width: 640px) {
+    .results thead { display: none; }
+    .results tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 12px; border-bottom: 1px solid var(--border); }
+    .results tr:last-child { border-bottom: none; }
+    .results td { padding: 0; border: none; white-space: normal; }
+    .results td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .results td:first-child, .results td.empty, .results td[colspan] { grid-column: 1 / -1; }
+    .file { max-width: none; }
+  }
+  footer { margin-top: 28px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1><img src="icon.svg" alt="" width="40" height="40">mlc - ML compressor</h1>
+  <p class="lead">Drop photos to see their bits per pixel and what <code>mlo photos</code> would do with them. Everything runs in your browser, nothing is uploaded.</p>
+
+  <label class="drop" id="drop">
+    <strong>Drop images here or click to choose</strong>
+    <span>JPEG for the mlo verdict. PNG, WebP and other formats your browser opens still get a bpp.</span>
+    <input type="file" id="files" accept="image/*,.jpg,.jpeg" multiple>
+  </label>
+
+  <div class="settings">
+    <label>--bpp
+      <input type="number" id="bpp" value="2.5" min="0" step="0.1">
+    </label>
+    <label>--min-size (MB)
+      <input type="number" id="minsize" value="3" min="0" step="0.5">
+    </label>
+    <label class="check"><input type="checkbox" id="usetarget"> Use --target-bpp</label>
+    <label>--target-bpp
+      <input type="number" id="target" value="1.9" min="0.1" step="0.1" disabled>
+    </label>
+    <div class="cmd">Same as: <code id="cmd">mlo photos FOLDER</code></div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+  <div class="table-wrap">
+    <table class="results">
+      <thead>
+        <tr><th>File</th><th>Resolution</th><th>Size</th><th>bpp</th><th>About quality</th><th>mlo photos</th></tr>
+      </thead>
+      <tbody id="rows"><tr><td class="empty" colspan="6">No images yet.</td></tr></tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>How bpp is calculated</summary>
+    <p>Bits per pixel is the file size relative to the resolution, the same formula mlo uses:</p>
+    <p><code>bpp = size in bytes x 8 / (width x height)</code></p>
+    <p>A photo is recompressed when it is larger than <code>--min-size</code> and its bpp is above <code>--bpp</code> (or above <code>--target-bpp</code> when that is set). Photos at or below the threshold are left alone.</p>
+    <p>The quality column is an estimate for typical phone photos re-encoded by mlo (Pillow). Detailed or noisy scenes land higher, plain scenes lower, and a camera's quality numbers use different tables, so treat it as a rough guide:</p>
+    <table>
+      <thead><tr><th>JPEG quality</th><th>About this bpp</th></tr></thead>
+      <tbody>
+        <tr><td>95</td><td>3.5 to 4.5</td></tr>
+        <tr><td>90</td><td>2.5 to 3.2</td></tr>
+        <tr><td>85</td><td>2.0 to 2.5</td></tr>
+        <tr><td>80</td><td>1.7 to 2.1</td></tr>
+        <tr><td>75</td><td>1.4 to 1.8</td></tr>
+        <tr><td>70</td><td>1.2 to 1.6</td></tr>
+        <tr><td>60</td><td>1.0 to 1.3</td></tr>
+      </tbody>
+    </table>
+  </details>
+
+  <footer>Part of <a href="https://github.com/Ghorbel37/media-library-optimizer">media-library-optimizer</a>. See the README for how to choose <code>--bpp</code> and <code>--target-bpp</code>.</footer>
+</main>
+
+<script>
+  const MB = 1024 * 1024;  // mlo's --min-size uses 1024-based units
+  // Middle of each range in the README table, used to estimate a quality from a bpp
+  const QUALITY_POINTS = [[60, 1.15], [70, 1.4], [75, 1.6], [80, 1.9], [85, 2.25], [90, 2.85], [95, 4.0]];
+
+  const els = {
+    drop: document.getElementById("drop"), files: document.getElementById("files"), rows: document.getElementById("rows"),
+    summary: document.getElementById("summary"), bpp: document.getElementById("bpp"), minsize: document.getElementById("minsize"),
+    usetarget: document.getElementById("usetarget"), target: document.getElementById("target"), cmd: document.getElementById("cmd"),
+  };
+  let items = [];
+
+  // Width and height from the JPEG frame header, without decoding the image.
+  // Top-level segments only, so the EXIF thumbnail inside APP1 is skipped.
+  function jpegSize(buf) {
+    const v = new DataView(buf);
+    if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null;
+    let i = 2;
+    while (i + 9 < v.byteLength) {
+      if (v.getUint8(i) !== 0xFF) return null;
+      const marker = v.getUint8(i + 1);
+      if (marker === 0xFF) { i++; continue; }
+      if (marker === 0xD8 || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { i += 2; continue; }
+      const len = v.getUint16(i + 2);
+      const isSof = marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC;
+      if (isSof) return { h: v.getUint16(i + 5), w: v.getUint16(i + 7) };
+      i += 2 + len;
+    }
+    return null;
+  }
+
+  function decodedSize(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+
+  function isJpeg(file) {
+    return /\.(jpe?g)$/i.test(file.name);
+  }
+
+  function estimateQuality(bpp) {
+    const p = QUALITY_POINTS;
+    if (bpp <= p[0][1]) return "60 or lower";
+    if (bpp >= p[p.length - 1][1]) return "95 or higher";
+    for (let k = 1; k < p.length; k++) {
+      if (bpp <= p[k][1]) {
+        const [q0, b0] = p[k - 1], [q1, b1] = p[k];
+        return String(Math.round(q0 + (q1 - q0) * (bpp - b0) / (b1 - b0)));
+      }
+    }
+  }
+
+  async function addFiles(fileList) {
+    // Copy first: the input's FileList empties when it is reset
+    for (const file of Array.from(fileList)) {
+      const url = URL.createObjectURL(file);
+      let dims = null;
+      if (isJpeg(file)) dims = jpegSize(await file.slice(0, Math.min(file.size, 4 * MB)).arrayBuffer());
+      if (!dims) dims = await decodedSize(url);
+      items.push({ file, url, dims });
+    }
+    render();
+  }
+
+  function settings() {
+    const useTarget = els.usetarget.checked;
+    const target = parseFloat(els.target.value);
+    const bpp = parseFloat(els.bpp.value);
+    return {
+      useTarget, target, bpp,
+      threshold: useTarget ? target : bpp,
+      minBytes: Math.round((parseFloat(els.minsize.value) || 0) * MB),
+      minText: els.minsize.value || "0",
+    };
+  }
+
+  function verdict(item, bpp, s) {
+    if (!isJpeg(item.file)) return ["warn", "Not a JPEG", "mlo photos only reads .jpg and .jpeg"];
+    if (item.file.size <= s.minBytes) return ["skip", "Skip", "under the size limit"];
+    if (bpp > s.threshold) {
+      const how = s.useTarget ? `to about ${s.target} bpp` : `above ${s.bpp} bpp`;
+      return ["compress", "Compress", how];
+    }
+    return ["skip", "Skip", "already efficient"];
+  }
+
+  function render() {
+    const s = settings();
+    let cmd = "mlo photos FOLDER";
+    if (s.useTarget) cmd += ` --target-bpp ${s.target}`;
+    else if (s.bpp !== 2.5) cmd += ` --bpp ${s.bpp}`;
+    if (s.minBytes === 0) cmd += " --min-size 0";
+    else if (s.minText !== "3") cmd += ` --min-size ${s.minText}MB`;
+    els.cmd.textContent = cmd;
+
+    if (!items.length) {
+      els.rows.innerHTML = '<tr><td class="empty" colspan="6">No images yet.</td></tr>';
+      els.summary.textContent = "";
+      return;
+    }
+    els.rows.innerHTML = "";
+    let compress = 0, bytes = 0;
+    for (const item of items) {
+      const tr = document.createElement("tr");
+      const f = item.file;
+      bytes += f.size;
+      if (!item.dims) {
+        tr.innerHTML = `<td><div class="file"><img alt=""><span></span></div></td><td colspan="5"><span class="tag warn">Could not read this image</span></td>`;
+      } else {
+        const { w, h } = item.dims;
+        const bpp = f.size * 8 / (w * h);
+        const [kind, label, why] = verdict(item, bpp, s);
+        if (kind === "compress") compress++;
+        tr.innerHTML = `<td><div class="file"><img alt=""><span></span></div></td>
+          <td class="num" data-label="Resolution">${w} x ${h}<span class="sub">${(w * h / 1e6).toFixed(1)} MP</span></td>
+          <td class="num" data-label="Size">${(f.size / 1e6).toFixed(2)} MB</td>
+          <td class="bpp" data-label="bpp">${bpp.toFixed(2)}</td>
+          <td class="num" data-label="About quality">${isJpeg(f) ? estimateQuality(bpp) : "-"}</td>
+          <td data-label="mlo photos"><span class="tag ${kind}">${label}</span><span class="sub">${why}</span></td>`;
+      }
+      tr.querySelector("img").src = item.url;
+      tr.querySelector(".file span").textContent = f.name;
+      tr.querySelector(".file span").title = f.name;
+      els.rows.appendChild(tr);
+    }
+    const n = items.length;
+    els.summary.textContent = `${n} image${n > 1 ? "s" : ""}, ${(bytes / 1e6).toFixed(1)} MB in total. mlo would compress ${compress} of them.`;
+  }
+
+  els.files.addEventListener("change", () => { addFiles(els.files.files); els.files.value = ""; });
+  ["dragenter", "dragover"].forEach((t) => els.drop.addEventListener(t, (e) => { e.preventDefault(); els.drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => els.drop.addEventListener(t, () => els.drop.classList.remove("over")));
+  els.drop.addEventListener("drop", (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+  // Dropping outside the box should not open the image in the tab
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => e.preventDefault());
+
+  els.usetarget.addEventListener("change", () => { els.target.disabled = !els.usetarget.checked; els.bpp.disabled = els.usetarget.checked; render(); });
+  [els.bpp, els.minsize, els.target].forEach((el) => el.addEventListener("input", render));
+  render();
+</script>
+</body>
+</html>
