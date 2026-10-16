@@ -124,6 +124,8 @@ Bits per pixel (bpp) is the file size relative to the resolution: `size in bytes
 - `--bpp` is a filter. Photos above it are re-encoded at `-q`, the rest are left alone. Set it below the bpp of the photos you want to shrink.
 - `--target-bpp` is a goal. For each photo, mlc searches the highest quality whose output stays at or under it, so every photo ends up about the same density. Photos already at or under it are skipped.
 
+If a re-encoded photo would come out bigger than the original, which can happen to a light photo at a high quality, mlc keeps the original, writes nothing for it and says so in the log.
+
 Measured on 29 photos from 11 phones and cameras (2008 to 2023, 3 to 16 MP), each re-encoded the way `mlc photos` does it. The range covers the middle 80% of the photos: detailed or noisy scenes (night, foliage) land at the high end, plain scenes at the low end. Straight from the camera, those photos were 0.9 to 2.9 bpp, 1.9 in the middle.
 
 | JPEG quality | bpp after mlc | Middle photo | 12 MP photo |

@@ -60,6 +60,7 @@ def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85,
         "compressed": 0,
         "skipped_small": 0,  # ignored due to the size filter
         "skipped_efficient": 0,  # ignored due to BPP
+        "skipped_bigger": 0,  # re-encoding would not make it smaller
         "skipped_existing": 0,  # already in the output folder
         "failed": 0,
         "space_saved_bytes": 0,
@@ -113,6 +114,12 @@ def run_photo_cleanup(input_dir, output_dir=None, bpp_threshold=2.5, quality=85,
                             used_quality, data = pick_quality(img, target_bpp, save_options)
                         else:
                             used_quality, data = quality, encode_jpeg(img, quality, save_options)
+                        if len(data) >= orig_size:
+                            # An already light photo can grow at a high quality: keep the original
+                            stats["skipped_bigger"] += 1
+                            print(f"Skip {filename}: quality {used_quality} would make it bigger "
+                                  f"({orig_size / 1e6:.2f} MB -> {len(data) / 1e6:.2f} MB), original kept")
+                            continue
                         os.makedirs(os.path.dirname(save_path), exist_ok=True)
                         with open(temp_path, "wb") as f:
                             f.write(data)
@@ -151,6 +158,8 @@ def print_photo_summary(results, dry_run=False):
     print(f"{'Would Compress:' if dry_run else 'Files Compressed:':<23}{results['compressed']}")
     print(f"Skipped (Small):       {results['skipped_small']}")
     print(f"Skipped (Efficient):   {results['skipped_efficient']}")
+    if not dry_run:
+        print(f"Skipped (Bigger):      {results['skipped_bigger']}")
     print(f"Skipped (Existing):    {results['skipped_existing']}")
     print(f"Failed:                {results['failed']}")
     if dry_run:
