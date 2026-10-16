@@ -1,6 +1,6 @@
 [project]
 name = "media-library-compressor"
-version = "0.5.0"
+version = "0.5.1"
 description = "A command line tool to optimize media while preserving quality, metadata and timestamps."
 readme = "README.md"
 requires-python = ">=3.12"
