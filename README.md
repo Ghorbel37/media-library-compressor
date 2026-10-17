@@ -1,4 +1,4 @@
-<img src="docs/icon.svg" alt="" width="96">
+<p align="center"><img src="docs/icon.svg" alt="" width="96"></p>
 
 # Media Library Compressor (mlc)
 
